@@ -4,7 +4,7 @@
 import argparse
 import logging
 
-from scaruffi import api
+from scaruffi.api import ScaruffiApi
 
 
 def main():
@@ -22,8 +22,7 @@ def main():
     args = parser.parse_args()
 
     log_level = logging.DEBUG if args.verbose else logging.WARNING
-    global LOG
-    LOG = api.setup_logging("scaruffi", level=log_level)
+    api = ScaruffiApi(log_level=log_level)
 
     if args.musicians:
         musicians = api.get_musicians(args.offset, args.limit)
