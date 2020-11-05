@@ -1,15 +1,10 @@
-#!/usr/bin/env python3
-"""A simple library to get data from scaruffi.com."""
-
-import argparse
-import logging
 import re
 from dataclasses import dataclass
 
 from bs4 import BeautifulSoup, NavigableString
 import requests
 
-import log
+import scaruffi.log
 
 
 LOG = None
@@ -19,7 +14,6 @@ GENERAL_INDEX = SITE_URL + "/music/groups.html"
 RATINGS_DECADES = SITE_URL + "/ratings/{:02}.html"
 
 
-
 @dataclass
 class Release:
     title: str
@@ -27,35 +21,9 @@ class Release:
     year: int = 0  # Usually the release year, not the recording year.
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-v", "--verbose", action="store_true",
-                        help="Print debug logs")
-    parser.add_argument("-r", "--ratings", type=int,
-                        help="Get ratings for a decade (e.g. 60)")
-    parser.add_argument("-m", "--musicians", action="store_true",
-                        help="Get the list of musicians")
-    parser.add_argument("--offset", type=int, default=0,
-                        help="Offset for paginated queries (default is 0)")
-    parser.add_argument("--limit", type=int, default=20,
-                        help="Limit for paginated queries (default is 20)")
-    args = parser.parse_args()
-
-    log_level = logging.DEBUG if args.verbose else logging.WARNING
+def setup_logging(*args, **kwargs):
     global LOG
-    LOG = log.get_logger("scaruffi", level=log_level)
-
-    if args.musicians:
-        musicians = get_musicians(args.offset, args.limit)
-        for musician in musicians:
-            print(musician)
-    elif args.ratings is not None:
-        ratings = get_ratings(args.ratings)
-        if ratings:
-            for rating, releases in ratings.items():
-                print(rating)
-                for rel in releases:
-                    print(f"- {rel.artist} - {rel.title} ({rel.year})")
+    LOG = scaruffi.log.get_logger(*args, **kwargs)
 
 
 def _get_page(url):
@@ -213,7 +181,3 @@ def _parse_release_title_year(title_and_year):
         LOG.error(f"Failed to parse year string \"{year}\" as an integer.")
         year = 0
     return title, year
-
-
-if __name__ == "__main__":
-    main()
