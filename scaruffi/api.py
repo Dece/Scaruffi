@@ -69,11 +69,11 @@ class ScaruffiApi:
         if not soup:
             return None
         ratings_table = max(soup.find_all("table"), key=lambda t: len(t.text))
-        num_lists = len(ratings_table("ul"))
-        if num_lists == 1:
-            return self._get_ratings_from_unique_list(ratings_table.ul)
+        lists = ratings_table("ul")
+        if len(lists) == 1:
+            return self._get_ratings_from_unique_list(lists[0])
         else:
-            return self._get_ratings_from_lists(ratings_table("ul"))
+            return self._get_ratings_from_lists(lists)
 
     def _get_ratings_from_unique_list(self, messy_list):
         """Get ratings from decades where one list contains all ratings."""
@@ -100,17 +100,33 @@ class ScaruffiApi:
         return ratings
 
     def _get_ratings_from_lists(self, lists):
-        """Get ratings from several lists, one per rating."""
+        """Get ratings from several lists, one per rating.
+
+        For some decades, there are two "lists of lists": one for albums per
+        ratings and one for EP/mini albums per ratings.
+        """
         ratings = {}
+        rating = None
         for ul in lists:
-            rating_tag = ul.span
-            if rating_tag:
-                rating = self._match_rating(rating_tag.text)
-            if rating is None:
-                self.log.critical("Failed to find rating tag in list.")
-                return None
-            releases = [self._parse_release(li.text) for li in ul("li")]
-            ratings[rating] = releases
+            for child in ul:
+                tag = child.name
+                if not tag:
+                    continue
+                if tag in ("p", "span"):
+                    parsed_rating = self._match_rating(child.text)
+                    if parsed_rating:
+                        rating = parsed_rating
+                    if rating not in ratings:
+                        ratings[rating] = []
+                    continue
+                if rating is None:
+                    self.log.critical("Failed to find rating tag in list.")
+                    return None
+                if tag != "li":
+                    self.log.warning(f"Unused tag in ratings list: {tag}.")
+                    continue
+                release = self._parse_release(child.text)
+                ratings[rating].append(release)
         return ratings
 
     RATING_RE = re.compile(r"\s*(\d(.\d)?)/10\s*")
